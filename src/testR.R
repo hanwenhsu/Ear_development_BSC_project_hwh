@@ -79,3 +79,4 @@ ggplot(data=df2, aes(x=flower, y=spike,color=student))+
   geom_point()+
   theme_classic()+
   theme(legend.position = "bottom")
+
