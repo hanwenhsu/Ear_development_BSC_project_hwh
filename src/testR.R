@@ -74,7 +74,7 @@ df2 %>%
 
 
 # How to visualize the result?
-ggplot(data=df2, aes(x=flower, y=spike,color=student))+
+ggplot(data=df2, aes(x=flower, y=spike,color=student_name))+
   geom_path()+
   geom_point()+
   theme_classic()+

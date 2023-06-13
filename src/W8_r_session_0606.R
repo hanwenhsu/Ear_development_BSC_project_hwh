@@ -71,25 +71,25 @@ df2 %>%
 # 5. remove "na." column
 
 # Answer from TC
-
-library(magrittr)
-df2<- purrr::map_dfr(list.files("./data/student"),~{
-  
-  student_name <-  .x %>% strsplit("_") %>% unlist() %>% 
-    .[4] %>% sub(".xlsx","",.)
-  
-  file<- readxl::read_xlsx(paste0("./data/student/",.x)) %>%  
-    `colnames<-`(stringr::str_to_lower(names(.)))%>% 
-    # lowercase by stringr
-    # see also str_to_upeer / str_to_title / str_to_sentence
-    `colnames<-`(gsub("kernal","kernel",names(.))) %>% 
-    `colnames<-`(gsub("spikes","spike",names(.)))%>%
-    `colnames<-`(gsub("plot.id","plot_id",names(.))) %>% 
-    mutate(student=student_name)
-}) 
-df2 %<>% mutate(var="Capone",plot_id=159) %>% #operation outside loop
-  .[!grepl("na.",names(.))] 
-df2 %>% glimpse()
+# 
+# library(magrittr)
+# df2<- purrr::map_dfr(list.files("./data/student"),~{
+#   
+#   student_name <-  .x %>% strsplit("_") %>% unlist() %>% 
+#     .[4] %>% sub(".xlsx","",.)
+#   
+#   file<- readxl::read_xlsx(paste0("./data/student/",.x)) %>%  
+#     `colnames<-`(stringr::str_to_lower(names(.)))%>% 
+#     # lowercase by stringr
+#     # see also str_to_upeer / str_to_title / str_to_sentence
+#     `colnames<-`(gsub("kernal","kernel",names(.))) %>% 
+#     `colnames<-`(gsub("spikes","spike",names(.)))%>%
+#     `colnames<-`(gsub("plot.id","plot_id",names(.))) %>% 
+#     mutate(student=student_name)
+# }) 
+# df2 %<>% mutate(var="Capone",plot_id=159) %>% #operation outside loop
+#   .[!grepl("na.",names(.))] 
+# df2 %>% glimpse()
 
 # How to visualize the result?
 ggplot(data=df2, aes(x=flower, y=spike,color=student))+
@@ -110,16 +110,16 @@ ggplot(data=df2, aes(x=flower, y=spike,color=student))+
         panel.grid.major.x = element_line())
 
 # answer from TC
-df2 %>% 
-  group_by(student,spike) %>% 
-  ggplot(aes(flower,spike,color=student))+
-  geom_point()+
-  geom_path(alpha=.5)+
-  facet_grid(~student)+
-  theme_classic()+
-  theme(strip.background = element_blank(),
-        panel.grid.major.x = element_line(),
-        legend.position = "none")
+# df2 %>% 
+#   group_by(student,spike) %>% 
+#   ggplot(aes(flower,spike,color=student))+
+#   geom_point()+
+#   geom_path(alpha=.5)+
+#   facet_grid(~student)+
+#   theme_classic()+
+#   theme(strip.background = element_blank(),
+#         panel.grid.major.x = element_line(),
+#         legend.position = "none")
 
 # How to place kernel-related traits in subplots?
 # long format
@@ -139,16 +139,16 @@ df2_long %>%
         legend.position = "none")
 
 # answer from TC
-df2 %>% 
-  tidyr::pivot_longer(starts_with("kernel"),
-               values_to = "kernel",
-               names_to="kerneltype") %>% 
-  group_by(student,spike) %>% 
-  ggplot(aes(kernel,spike,color=student))+
-  geom_point()+
-  geom_path()+
-  facet_grid(kerneltype~student)+ #row~column
-  theme_classic()+
-  theme(strip.background = element_blank(),
-        panel.grid.major.x = element_line(),
-        legend.position = "none")
+# df2 %>% 
+#   tidyr::pivot_longer(starts_with("kernel"),
+#                values_to = "kernel",
+#                names_to="kerneltype") %>% 
+#   group_by(student,spike) %>% 
+#   ggplot(aes(kernel,spike,color=student))+
+#   geom_point()+
+#   geom_path()+
+#   facet_grid(kerneltype~student)+ #row~column
+#   theme_classic()+
+#   theme(strip.background = element_blank(),
+#         panel.grid.major.x = element_line(),
+#         legend.position = "none")
