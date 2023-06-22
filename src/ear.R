@@ -9,8 +9,8 @@ ear <- read.csv("data/ear_raw.csv") %>%
            as.Date(.,format="%Y%m%d"))
 
 ear %>% 
-  filter(var%in%c('Potenzial',"Pionier",'Capone','Patras')) %>% 
-  group_by(timeid,nitrogen,var,appl) %>% 
+  filter(var%in%c('Capone'), nitrogen == 176, appl =="Split") %>% 
+  group_by(timeid,nitrogen,var,appl,rep) %>% 
   summarise(plot_id=unique(plot_id))
 
 ggplot(ear%>% 
