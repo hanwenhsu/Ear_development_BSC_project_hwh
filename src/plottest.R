@@ -5,10 +5,17 @@ library(ggplot2)
 p <- "./data/Grain_Counting/gc_57_11.xlsx"
 df <- readxl::read_xlsx(p, sheet=1) %>% 
   mutate(across(starts_with("kernel"),function(x)as.character(x))) %>% 
-  tidyr::pivot_longer(starts_with("kernel"),names_to = "kernel.type",values_to = "floret.pos") %>% 
+  tidyr::pivot_longer(starts_with("kernel"),
+                      names_to = "kernel.type",
+                      values_to = "floret.pos") %>% 
   mutate(floret.pos=strsplit(floret.pos,",")) %>% 
+  rowwise() %>%
   tidyr::unnest(floret.pos) %>% 
-  mutate(floret.pos=as.numeric(floret.pos) %>%replace(., is.na(.), 0)) #%>%
+  mutate(floret.pos=as.numeric(floret.pos) %>%replace(., is.na(.), 0)) %>%
+  mutate(kernel.number=case_when(
+    floret.pos != "0" ~1,
+    T ~ 0
+  )) 
 #mutate(floret.pos = factor(floret.pos, levels = c(3,2,1,0))) %>%
 #mutate(kernel.type = factor(kernel.type, levels = c("kernel.S","kernel.M","kernel.L")))
 

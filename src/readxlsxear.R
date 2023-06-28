@@ -10,8 +10,12 @@ readx<- function(p,sh){
     mutate(floret.pos=as.numeric(floret.pos) %>%replace(., .==0, NA),
            kernel.size=factor(kernel.type,levels=paste0("kernel.",c("S","M","L"))) %>% as.numeric() %>% 
              # create contrast
-             ifelse(.==3,5,.))
-  
+             ifelse(.==3,5,.)) #%>%
+    # mutate(kernel.number=case_when(
+    #   floret.pos != NA ~1,
+    #   T ~ 0
+    # ))  # calculate kernel number
+
 }
 
 plot_fun <- function(df){
@@ -41,9 +45,8 @@ plot_fun <- function(df){
 # -------------------------------------------------------------------------
 p <- "data/Grain_Counting/gc_63_11.xlsx"
 
-graindf <- purrr::xxmap_dfr(1:length(readxl::excel_sheets(p)),~{
+graindf <- purrr::map_dfr(1:length(readxl::excel_sheets(p)),~{
   readx(p,.x)
 }) %>% na.omit() 
 
 graindf %>% plot_fun()
-
