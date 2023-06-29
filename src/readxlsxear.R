@@ -50,3 +50,14 @@ graindf <- purrr::map_dfr(1:length(readxl::excel_sheets(p)),~{
 }) %>% na.omit() 
 
 graindf %>% plot_fun()
+
+#kernel number
+graindf %>%
+  mutate(kernel.size=NULL) %>%
+  group_by(spike,rep) %>%
+  summarise(kernel.num = sum(length(kernel.type))) %>%
+  ggplot(aes(kernel.num,spike,color=rep))+
+  geom_path()+
+  geom_point()+
+  facet_wrap(~rep)
+
