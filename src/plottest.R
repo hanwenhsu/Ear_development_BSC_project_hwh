@@ -54,7 +54,7 @@ df_multi %>%
   ggplot(aes(x=flower, y=spike,color = rep)) +
   geom_path()+
   geom_point(alpha = 0.7) +
-  facet_grid(~rep)+
+  facet_wrap(~rep)+
   theme_bw() +
   scale_fill_viridis_c(guide="legend",breaks=c(1,2,5))+
   theme(legend.position="bottom",
