@@ -2,7 +2,7 @@ rm(list = ls())
 library(dplyr)
 library(ggplot2)
 
-p <- "./data/Grain_Counting/gc_57_11.xlsx"
+p <- "./data/Grain_Counting/gc_57_1.xlsx"
 df <- readxl::read_xlsx(p, sheet=1) %>% 
   mutate(across(starts_with("kernel"),function(x)as.character(x))) %>% 
   tidyr::pivot_longer(starts_with("kernel"),
@@ -11,19 +11,15 @@ df <- readxl::read_xlsx(p, sheet=1) %>%
   mutate(floret.pos=strsplit(floret.pos,",")) %>% 
   rowwise() %>%
   tidyr::unnest(floret.pos) %>% 
-  mutate(floret.pos=as.numeric(floret.pos) %>%replace(., is.na(.), 0)) %>%
-  mutate(kernel.number=case_when(
-    floret.pos != "0" ~1,
-    T ~ 0
-  )) 
+  mutate(floret.pos=as.numeric(floret.pos) %>%replace(., is.na(.), 0)) 
+
 #mutate(floret.pos = factor(floret.pos, levels = c(3,2,1,0))) %>%
 #mutate(kernel.type = factor(kernel.type, levels = c("kernel.S","kernel.M","kernel.L")))
 
-df %>%
-  ggplot(aes(x=floret.pos, y=spike, color = kernel.type))+
+df%>%
+  ggplot(aes(x=flower, y=spike))+
   geom_path()+
   geom_point()+
-  facet_grid(~kernel.type)+
   theme_classic()+
   theme(legend.position = "none",
         strip.background = element_blank(),
@@ -39,7 +35,7 @@ df %>%
   theme(legend.position="bottom")
 
 
-df_multi <- purrr::map_dfr(1:6,~{
+df_multi <- purrr::map_dfr(1:length(readxl::excel_sheets(p)),~{
   file<- readxl::read_xlsx(p, sheet = .x)
   file <- file %>% mutate(across(starts_with("kernel"),function(x)as.character(x))) 
   file <- file %>% tidyr::pivot_longer(starts_with("kernel"),names_to = "kernel.type",values_to = "floret.pos") 
@@ -52,17 +48,16 @@ df_multi <- purrr::map_dfr(1:6,~{
   return(file)
 })
 
-library(viridis)
+#library(viridis)
 
 df_multi %>%
-  filter(floret.pos != 0) %>%
-  ggplot(aes(x=floret.pos, y=spike)) +
-  geom_point(alpha = 0.7,aes(size = kernel.type, fill = kernel.type)) +
-  facet_wrap(~rep)+
+  ggplot(aes(x=flower, y=spike,color = rep)) +
+  geom_path()+
+  geom_point(alpha = 0.7) +
+  facet_grid(~rep)+
   theme_bw() +
   scale_fill_viridis_c(guide="legend",breaks=c(1,2,5))+
   theme(legend.position="bottom",
         strip.background = element_blank(),
         panel.grid.major = element_line())
-# rep2_spike11&14 --> two kernels in floret one
-# rep4_spike 5 --> two kernels in floret one
+
