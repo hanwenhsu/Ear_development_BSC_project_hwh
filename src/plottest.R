@@ -2,7 +2,7 @@ rm(list = ls())
 library(dplyr)
 library(ggplot2)
 
-p <- "./data/Grain_Counting/gc_57_1.xlsx"
+p <- "./data/Grain_Counting/gc_63_1.xlsx"
 df <- readxl::read_xlsx(p, sheet=1) %>% 
   mutate(across(starts_with("kernel"),function(x)as.character(x))) %>% 
   tidyr::pivot_longer(starts_with("kernel"),
