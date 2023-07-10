@@ -43,7 +43,7 @@ plot_fun <- function(df){
   
 }
 # -------------------------------------------------------------------------
-p <- "data/Grain_Counting/gc_57_1.xlsx"
+p <- "data/Grain_Counting/gc_57_11.xlsx"
 
 graindf <- purrr::map_dfr(1:length(readxl::excel_sheets(p)),~{
   readx(p,.x)
@@ -53,11 +53,11 @@ graindf %>% plot_fun()
 
 #kernel number
 graindf %>%
-  mutate(kernel.size=NULL) %>%
+  group_by(rep) %>%
+  mutate(kernel.pos = as.numeric(cut(spike, breaks = 3))) %>%
+  mutate(kernel.pos = case_when(kernel.pos == 1 ~ "basal",
+                                kernel.pos == 2 ~ "central",
+                                T ~ "apical")) %>%
   group_by(spike,rep) %>%
-  summarise(kernel.num = sum(length(kernel.type))) %>%
-  ggplot(aes(kernel.num,spike,color=rep))+
-  geom_path()+
-  geom_point()+
-  facet_wrap(~rep)
+  summarise(kernel.num = sum(length(kernel.type)),var,plot_id,kernel.pos)
 
