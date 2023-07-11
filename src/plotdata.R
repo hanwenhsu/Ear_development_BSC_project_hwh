@@ -1,6 +1,7 @@
 rm(list = ls())
 library(dplyr)
 library(ggplot2)
+library(ggpol)
 library(viridis)
 
 readx<- function(p,sh){
@@ -9,10 +10,12 @@ readx<- function(p,sh){
     tidyr::pivot_longer(starts_with("kernel"),names_to = "kernel.type",values_to = "floret.pos") %>% 
     mutate(floret.pos=strsplit(floret.pos,",")) %>% 
     tidyr::unnest(floret.pos) %>% 
-    mutate(floret.pos=as.numeric(floret.pos) %>%replace(., .==0, NA),
+    mutate(floret.pos=as.numeric(floret.pos),
            kernel.size=factor(kernel.type,levels=paste0("kernel.",c("S","M","L"))) %>% as.numeric() %>% 
              # create contrast
-             ifelse(.==3,5,.))
+             ifelse(.==3,5,.)) %>%
+    mutate(var = case_when(var == "Capone" ~"capone",
+                           T ~ var))
 }
 
 plot_fun <- function(df){
@@ -43,9 +46,9 @@ plot_fun <- function(df){
 hypo1 <- function(df){
   p <- df %>%
     group_by(plot_id,rep,spike) %>%
-    summarise(kernel.num = sum(length(kernel.type))) %>%
+    mutate(kernel.num = sum(length(kernel.type))) %>%
     group_by(plot_id,spike) %>%
-    summarise(kernel.num = mean(kernel.num)) %>%
+    mutate(kernel.num = mean(kernel.num)) %>%
     group_by(plot_id) %>%
     mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
     mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
@@ -63,6 +66,22 @@ hypo1 <- function(df){
           legend.position = "bottom")
   return(p)
 }
+
+hypo2 <- function(df){
+  p <- df %>%
+    group_by(spike,floret.pos) %>%
+    summarise(kernel.num = sum(length(kernel.type),na.rm = TRUE)/10) %>%
+    mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
+    mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
+                                  kernel.pos == 2 ~"central",
+                                  T ~"apical")) %>%
+    ggplot(aes(floret.pos,kernel.num,col=kernel.pos))+
+    geom_point()+
+    theme_classic()+
+    theme(strip.background = element_blank())
+  return(p)
+}
+
 # -------------------------------------------------------------------------
 # p <- "data/Grain_Counting/gc_57_11.xlsx"
 # graindf <- purrr::map_dfr(1:length(readxl::excel_sheets(p)),~{
@@ -76,20 +95,24 @@ filelist <- list.files("./data/Grain_Counting") %>% paste0("./data/Grain_Countin
 graindf <- purrr::map_dfr(1:10,~{
   x <- data.frame("var"=NA, "plot_id"=NA, "rep"=NA,
                   "spike"=NA,"flower"=NA,"kernel.type"=NA,
-                  "floret.pos"=NA, "kernel.size"=NA)
+                  "floret.pos"=NA, "kernel.size"=NA, "batch" =NA)
   for (i in 1:length(filelist)){
-    df <- readx(filelist[i],.x)
-    x <- rbind(x,df)
+    df <- readx(filelist[i],.x) %>%
+      mutate(batch = substr(filelist[i],nchar(filelist[i]) - 6,nchar(filelist[i])-5))
+    x <- rbind(x,df) 
   }
-  return(x)
-}) %>% .[-1,] %>% na.omit()
+  return(x[-1,]) 
+}) %>% replace(is.na(.), 0)
+
+
+
 
 
 graindf %>%    
   group_by(plot_id,rep,spike) %>%
-  summarise(kernel.num = sum(length(kernel.type))) %>%
+  mutate(kernel.num = sum(length(kernel.type))) %>%
   group_by(plot_id,spike) %>%
-  summarise(kernel.num = mean(kernel.num)) %>%
+  mutate(kernel.num = mean(kernel.num)) %>%
   group_by(plot_id) %>%
   mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
   mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
@@ -105,4 +128,53 @@ graindf %>%
         panel.grid.major.x = element_line(),
         legend.position = "bottom")
 
+graindf %>%     group_by(plot_id,rep,spike) %>%
+  mutate(kernel.num = sum(length(kernel.type))) %>%
+  group_by(plot_id,spike) %>%
+  mutate(kernel.num = mean(kernel.num)) %>%
+  filter(spike==2, plot_id==57)
+  group_by(plot_id) %>%
+  mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
+  mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
+                                kernel.pos == 2 ~"central",
+                                T ~"apical")) %>%
+  mutate(treatment = ifelse(plot_id == 57, "early","late")) %>%
+  ungroup()%>%
+  select(var,plot_id,spike,kernel.num,kernel.pos) %>%
+  unique() 
+
 graindf %>% hypo1()
+
+x <- graindf %>% 
+  group_by(spike,floret.pos) %>%
+  mutate(kernel.num = sum(length(kernel.type),na.rm = TRUE)/10) %>%
+  group_by(var) %>%
+  mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
+  mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
+                                kernel.pos == 2 ~"central",
+                                T ~"apical")) #%>% 
+graindf %>% hypo2()
+
+graindf %>%
+  group_by(plot_id,rep,spike,batch) %>%
+  mutate(kernel.num = case_when(floret.pos == 0 ~0,
+                                floret.pos == "0"~0,
+                                T~ 1)) %>%
+  mutate(kernel.num = sum(kernel.num)) %>%
+  group_by(plot_id,floret.pos,spike) %>%
+  mutate(kernel.num = mean(kernel.num)) %>%
+  group_by(plot_id) %>%
+  mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
+  mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
+                                kernel.pos == 2 ~"central",
+                                T ~"apical")) %>%
+  mutate(kernel.pos = factor(kernel.pos,levels = c("basal","central","apical"))) %>%
+  mutate(treatment = ifelse(plot_id == 57, "early","late")) %>%
+  filter(floret.pos != 0) %>%
+  select(var,plot_id,spike,floret.pos,kernel.num,kernel.pos) %>%
+  unique() %>%
+  ggplot(aes(floret.pos,kernel.num,col=kernel.pos))+
+  geom_point()+
+  theme_classic()+
+  facet_grid(~kernel.pos)+
+  theme(strip.background = element_blank())
