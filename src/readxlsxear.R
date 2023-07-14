@@ -43,7 +43,7 @@ plot_fun <- function(df){
   
 }
 # -------------------------------------------------------------------------
-p <- "data/Grain_Counting/gc_57_11.xlsx"
+p <- "data/Grain_Counting/gc_63_06.xlsx"
 
 graindf <- purrr::map_dfr(1:length(readxl::excel_sheets(p)),~{
   readx(p,.x)
