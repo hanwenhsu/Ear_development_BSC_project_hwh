@@ -61,3 +61,7 @@ graindf %>%
   group_by(spike,rep) %>%
   summarise(kernel.num = sum(length(kernel.type)),var,plot_id,kernel.pos)
 
+df<- read.csv("./data/ear_raw.csv")
+
+df %>%
+  filter(plot_id == 57)

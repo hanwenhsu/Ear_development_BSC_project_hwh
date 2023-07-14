@@ -2,178 +2,209 @@ rm(list = ls())
 library(dplyr)
 library(ggplot2)
 library(ggpol)
-library(viridis)
+library(ggpubr)
 
 readx<- function(p,sh){
   df <- readxl::read_xlsx(p,sheet = sh) %>% 
     mutate(across(starts_with("kernel"),function(x)as.character(x))) %>% 
+    # long format for kernel type and floret position
     tidyr::pivot_longer(starts_with("kernel"),names_to = "kernel.type",values_to = "floret.pos") %>% 
     mutate(floret.pos=strsplit(floret.pos,",")) %>% 
     tidyr::unnest(floret.pos) %>% 
-    mutate(floret.pos=as.numeric(floret.pos)%>%replace(., .==0, NA),
+    mutate(floret.pos=as.numeric(floret.pos)%>%replace(., is.na(.), 0),
+           # sort data
            kernel.size=factor(kernel.type,levels=paste0("kernel.",c("S","M","L"))) %>% as.numeric() %>% 
-             # create contrast
+             # create contrast for kernel size
              ifelse(.==3,5,.)) %>%
+    #separate spike section
+    mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
+    mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
+                                  kernel.pos == 2 ~"central",
+                                  T ~"apical")) %>%
     mutate(var = case_when(var == "Capone" ~"capone",
-                           T ~ var))
+                           T ~ var)) # adjust case difference
 }
 
-plot_fun <- function(df){
-  # find floret where more than two types were recorded for same position  
-  sdf <- df %>% group_by(rep,spike,floret.pos) %>% 
-    summarise(n=n()) %>% 
-    filter(n>1) %>% 
-    mutate(lab=paste0("Check\n(Nsp,Nf)\n(",spike,',',floret.pos,')'))
-  
-  p <- df %>%
-    ggplot(aes(floret.pos,spike))+
-    geom_point(alpha=.4,aes(size=kernel.size,fill=kernel.size),
-               shape=21)+
-    facet_wrap(~rep)+
-    theme_bw()+
-    ggrepel::geom_label_repel(data = sdf, mapping=aes(floret.pos,spike, label = lab),color="red",
-                              box.padding = 1,size=3)+
-    scale_fill_viridis_c(guide = "legend",breaks = c(1, 2, 5),
-                         labels = paste0("kernel.",c("S","M","L"))) +
-    scale_size_continuous(breaks = c(1, 2, 3), range = c(1, 5),
-                          labels = paste0("kernel.",c("S","M","L")))+
-    theme(panel.grid.minor.x=element_blank(),strip.background = element_blank(),
-          legend.position = "bottom")
-  return(p)
-  
-}
-
+# hypothesis 1
 hypo1 <- function(df){
   p <- df %>%
-    group_by(plot_id,rep,spike) %>%
-    mutate(kernel.num = sum(length(kernel.type))) %>%
+    # 1. document kernel number
+    mutate(kernel.num = ifelse(floret.pos == 0, 0, 1)) %>%
+    mutate(kernel.size=NULL,
+           floret.pos = NULL,
+           kernel.type = NULL) %>%
+    # 2. calculate mean kernel number on each spike for each treatment 
+    # --> across reps & across batch = group by plot id and spike
+    # (here only difference is treatment) --> Choice: all batches?
     group_by(plot_id,spike) %>%
-    mutate(kernel.num = mean(kernel.num)) %>%
-    group_by(plot_id) %>%
+    summarise(kernel.num = mean(kernel.num, na.rm = FALSE)) %>%
+    mutate(kernel.num = ifelse(kernel.num == 0, NA, kernel.num)) %>%
+    # restore position information
+    ungroup()%>%
     mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
     mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
                                   kernel.pos == 2 ~"central",
                                   T ~"apical")) %>%
-    mutate(treatment = ifelse(plot_id == 57, "early","late")) %>%
-    ungroup()%>%
+    # create treatment column
+    mutate(sowing_date = ifelse(plot_id == 57, "early","late")) %>%
+    group_by(plot_id)%>%
+    # 3. plot data
     ggplot(aes(kernel.num,spike))+
-    geom_path(alpha = 0.3,linewidth=0.3)+
-    geom_point(size = 1.5,aes(col=kernel.pos))+
-    facet_grid(~treatment)+
-    theme_bw()+
+    geom_point(size = 5, alpha = 0.5, col = "black",aes(shape = kernel.pos))+
+    #geom_boxplot(aes(fill = kernel.pos))+
+    geom_path(aes(col=sowing_date))+
+    theme_classic()+
     theme(strip.background = element_blank(),
-          panel.grid.major.x = element_line(),
+          strip.text.x  = element_text(size=20),
+          panel.grid.major.y = element_line(linetype = "dashed"),
           legend.position = "bottom")
   return(p)
 }
 
+# hypothesis 2
 hypo2 <- function(df){
   p <- df %>%
-    group_by(spike,floret.pos) %>%
-    summarise(kernel.num = sum(length(kernel.type),na.rm = TRUE)/10) %>%
+    # 1. document kernel number
+    mutate(kernel.num = ifelse(floret.pos == 0, 0, 1)) %>%
+    mutate(kernel.size=NULL) %>%
+    # 2. calculate total kernel number of each kernel type
+    #    on each spike for each treatment in each rep for each batch
+    group_by(plot_id,spike,kernel.type,batch,rep) %>%
+    reframe(var, kernel.num = sum(kernel.num, na.rm = FALSE), kernel.type) %>%
+    # 3. calculate mean kernel number of each kernel type 
+    #    on each spike
+    group_by( spike, kernel.type) %>%
+    reframe(plot_id,kernel.num = mean(kernel.num, na.rm=FALSE)) %>%
+    # 4. restore kernel position    
+    ungroup()%>%
     mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
     mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
                                   kernel.pos == 2 ~"central",
                                   T ~"apical")) %>%
-    ggplot(aes(floret.pos,kernel.num,col=kernel.pos))+
-    geom_point()+
+    mutate(kernel.type = factor(kernel.type, levels = paste0("kernel.",c("S","M","L")))) %>%
+    mutate(kernel.size=factor(kernel.type,levels=paste0("kernel.",c("S","M","L"))) %>% as.numeric() %>% 
+             # create contrast for kernel size
+             ifelse(.==3,5,.)) %>%
+    unique() %>% #remove repetitive row
+    mutate(kernel.num = ifelse(kernel.num == 0, NA, kernel.num)) %>%
+    # 5. plot data 
+    ggplot(aes(kernel.num, spike))+
+    geom_path(alpha = 0.3)+
+    geom_point(alpha=.5,aes(size=kernel.size,fill=kernel.pos),
+               shape=21)+
+    scale_fill_viridis(discrete = TRUE, option = "E")+
+    scale_size_continuous(breaks = c(1, 2, 3), range = c(1, 12),
+                          labels = paste0("kernel.",c("S","M","L")))+
+    facet_grid(~kernel.type)+
     theme_classic()+
-    theme(strip.background = element_blank())
+    theme(strip.background = element_rect(linewidth = 0.5),
+          panel.grid.major.y = element_line(linewidth = 0.5),
+          legend.position = "bottom")
+  return(p)
+}
+
+# hypothesis 3
+
+hypo3 <- function(df){
+  p <- df %>%
+    # 1. document kernel number
+    mutate(kernel.num = ifelse(floret.pos == 0, 0, 1)) %>%
+    mutate(kernel.size=NULL) %>%
+    # 2. calculate total kernel number of each kernel type
+    #    on each spike for each treatment in each rep for each batch
+    group_by(plot_id,spike,kernel.type,batch,rep) %>%
+    reframe(var, kernel.num = sum(kernel.num, na.rm = FALSE), kernel.type) %>%
+    # 3. calculate mean kernel number of each kernel type 
+    #    on each spikefor each batch
+    group_by(spike, kernel.type,batch) %>%
+    reframe(plot_id,kernel.num = mean(kernel.num, na.rm=FALSE)) %>% 
+    # 4. restore kernel position    
+    ungroup()%>%
+    mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
+    mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
+                                  kernel.pos == 2 ~"central",
+                                  T ~"apical")) %>%
+    mutate(kernel.size=factor(kernel.type,levels=paste0("kernel.",c("S","M","L"))) %>% as.numeric() %>% 
+             # create contrast for kernel size
+             ifelse(.==3,5,.)) %>%
+    unique() %>% #remove repetitive row
+    mutate(kernel.num = ifelse(kernel.num == 0, NA, kernel.num)) %>%
+    # 5. plot data
+    ggplot(aes(kernel.num, spike))+
+    geom_point(alpha=.8,aes(size=kernel.size,fill=kernel.size),
+               shape=21)+
+    geom_path()+
+    facet_grid(kernel.type~batch)+
+    scale_fill_viridis_c(guide = "legend",breaks = c(1, 2, 5),
+                         labels = paste0("kernel.",c("S","M","L"))) +
+    scale_size_continuous(breaks = c(1, 2, 3), range = c(1, 12),
+                          labels = paste0("kernel.",c("S","M","L")))+
+    theme_classic2()+
+    theme(strip.background = element_rect(),
+          panel.grid.major.y = element_line(linewidth = 0.5),
+          legend.position = "bottom")
   return(p)
 }
 
 # -------------------------------------------------------------------------
-# p <- "data/Grain_Counting/gc_57_11.xlsx"
-# graindf <- purrr::map_dfr(1:length(readxl::excel_sheets(p)),~{
-#   readx(p,.x)
-# }) %>% na.omit() 
-# 
-# graindf %>% plot_fun()
 
+#file name list for reading file
 filelist <- list.files("./data/Grain_Counting") %>% paste0("./data/Grain_Counting/",.)
-filelist <- filelist[c(-2,-5)]
 
+#read data
 graindf <- purrr::map_dfr(1:10,~{
   x <- data.frame("var"=NA, "plot_id"=NA, "rep"=NA,
                   "spike"=NA,"flower"=NA,"kernel.type"=NA,
-                  "floret.pos"=NA, "kernel.size"=NA, "batch" =NA)
+                  "floret.pos"=NA, "kernel.size"=NA, "kernel.pos" =NA,
+                  "batch" =NA)
   for (i in 1:length(filelist)){
     df <- readx(filelist[i],.x) %>%
       mutate(batch = substr(filelist[i],nchar(filelist[i]) - 6,nchar(filelist[i])-5))
     x <- rbind(x,df) 
-    x
   }
   return(x[-1,]) 
 })  #%>% na.omit()
 
 
-
-
-
-graindf %>%    
-  group_by(plot_id,rep,spike) %>%
-  mutate(kernel.num = sum(length(kernel.type))) %>%
-  group_by(plot_id,spike) %>%
-  mutate(kernel.num = mean(kernel.num)) %>%
-  group_by(plot_id) %>%
-  mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
-  mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
-                                kernel.pos == 2 ~"central",
-                                T ~"apical")) %>%
-  mutate(treatment = ifelse(plot_id == 57, "early","late")) %>%
-  ungroup()%>%
-  ggplot(aes(kernel.num,spike))+
-  geom_path(aes(col=treatment))+
-  geom_point(size = 1.5)+
-  theme_bw()+
-  theme(strip.background = element_blank(),
-        panel.grid.major.x = element_line(),
-        legend.position = "bottom")
-
-graindf %>%     group_by(plot_id,rep,spike) %>%
-  mutate(kernel.num = sum(length(kernel.type))) %>%
-  group_by(plot_id,spike) %>%
-  mutate(kernel.num = mean(kernel.num)) %>%
-  filter(spike==2, plot_id==57)
-  group_by(plot_id) %>%
-  mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
-  mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
-                                kernel.pos == 2 ~"central",
-                                T ~"apical")) %>%
-  mutate(treatment = ifelse(plot_id == 57, "early","late")) %>%
-  ungroup()%>%
-  select(var,plot_id,spike,kernel.num,kernel.pos) %>%
-  unique() 
-
+# hypothesis 1 
+# Sowing date affects distribution of grains between spike sections
 graindf %>% hypo1()
 
-x <- graindf %>% 
-  group_by(spike,floret.pos) %>%
-  mutate(kernel.num = sum(length(kernel.type),na.rm = TRUE)/10) %>%
-  group_by(var) %>%
-  mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
-  mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
-                                kernel.pos == 2 ~"central",
-                                T ~"apical")) #%>% 
+# hypothesis 2
+# Spike section affects grain size
 graindf %>% hypo2()
 
-graindf %>%
-  group_by(plot_id,rep,spike,batch) %>%
-  mutate(kernel.num = sum(length(kernel.type))) %>%
-  group_by(floret.pos,spike) %>%
-  mutate(kernel.num = mean(kernel.num)) %>%
-  group_by(var) %>%
-  mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
-  mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
-                                kernel.pos == 2 ~"central",
-                                T ~"apical")) %>%
-  mutate(kernel.pos = factor(kernel.pos,levels = c("basal","central","apical"))) %>%
-  mutate(treatment = ifelse(plot_id == 57, "early","late")) %>%
-  select(var,plot_id,spike,floret.pos,kernel.num,kernel.pos) %>%
-  unique() %>%
-  ggplot(aes(floret.pos,kernel.num,col=kernel.pos))+
-  geom_point()+
-  #geom_boxplot()+
-  theme_classic()+
-  facet_grid(~kernel.pos)+
-  theme(strip.background = element_blank())
+# hypothesis 3
+# Grains increase in sizes as it develops (--> across batch)
+# but not the distribution of grains (Grain filling)
+graindf %>% hypo3()
+
+
+# grain set
+# graindf %>%
+#   # 1. document kernel number
+#   mutate(kernel.num = ifelse(floret.pos == 0, 0, 1)) %>%
+#   mutate(kernel.size=NULL) %>%
+#   # 2. calculate total kernel number on each spike 
+#   # for each treatment in each rep for each batch
+#   group_by(plot_id,spike,batch,rep) %>%
+#   reframe(var, kernel.num = sum(kernel.num, na.rm = FALSE),flower) %>%
+#   # 3. calculate mean kernel number on each spike
+#   # for each treatment
+#   group_by(plot_id, spike) %>%
+#   reframe(var, kernel.num = mean(kernel.num),flower = mean(flower)) %>%
+#   # 4. calculate grain set rate
+#   mutate(grain.set = ifelse(flower != 0, kernel.num/flower, 0)) %>%
+#   # 5. restore kernel position    
+#   mutate(kernel.pos = as.numeric(cut(spike,breaks=3))) %>%
+#   mutate(kernel.pos = case_when(kernel.pos == 1 ~"basal",
+#                                 kernel.pos == 2 ~"central",
+#                                 T ~"apical")) %>%
+#   
+#   unique() %>% #remove repetitive row
+#   # 6. plot data 
+#   ggplot(aes(grain.set,spike))+
+#   geom_point()+
+#   geom_path()+
+#   facet_grid(~plot_id)
+#     
