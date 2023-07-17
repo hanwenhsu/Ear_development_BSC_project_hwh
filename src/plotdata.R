@@ -39,6 +39,8 @@ hypo1 <- function(df){
     # 2. calculate mean kernel number on each spike for each treatment 
     # --> across reps & across batch = group by plot id and spike
     # (here only difference is treatment) --> Choice: all batches?
+    group_by(plot_id,spike,batch,rep) %>%
+    summarise(kernel.num = sum(kernel.num)) %>%
     group_by(plot_id,spike) %>%
     summarise(mean.kernel.num = mean(kernel.num, na.rm = FALSE),
               sd.kernel.num = sd(kernel.num)) %>%
@@ -127,7 +129,6 @@ hypo2 <- function(df){
     mutate(kernel.size=NULL) %>%
     # 2. calculate total kernel number of each kernel type
     #    on each spike for each treatment in each rep for each batch
-    group_by(plot_id,batch,rep) %>%
     group_by(plot_id,spike,kernel.type,batch,rep) %>%
     summarise(kernel.num = sum(kernel.num, na.rm = FALSE)) %>%
     # 3. calculate mean kernel number of each kernel type 
