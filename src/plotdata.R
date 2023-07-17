@@ -62,7 +62,8 @@ hypo1 <- function(df){
     geom_errorbar(aes(xmin = mean.kernel.num - se.kernel.num, 
                       xmax = mean.kernel.num + se.kernel.num),
                   width = 0.2, alpha=0.3)+
-    labs(title = "Comparison between effect of two sowing dates on distribution of grains")+
+    labs(title = "Comparison between effect of two sowing dates on distribution of grains",
+         caption = "Batch: 01, 06, 11")+
     xlab("Average Grain Number")+
     ylab("Spike Position")+
     theme_classic()+
@@ -106,12 +107,14 @@ hypo1_stat <- function(df){
     facet_grid(~kernel.pos)+
     stat_compare_means(method="t.test")+
     labs(title = "Comparison between two treatments in distribution of grains",
-         subtitle = "Is there a difference in mean grain number between treatment")+
+         subtitle = "Is there a difference in mean grain number between treatment",
+         caption = "Batch: 01, 06, 11")+
     ylab("Grain Number")+
     theme_classic()+
     theme(strip.background = element_rect(),
           strip.text  = element_text(size=12),
           plot.title = element_text(size=12,hjust = 0.5,face="bold"),
+          plot.subtitle = element_text(hjust = 0.5),
           axis.title = element_text(face = "bold",size=15),
           axis.text.x = element_text(angle = 45, vjust = 0.5,size = 12),
           axis.text.y = element_text(size =12),
@@ -160,7 +163,8 @@ hypo2 <- function(df){
     scale_size_continuous(breaks = c(1, 2, 3), range = c(1, 12),
                           labels = paste0("kernel.",c("S","M","L")))+
     facet_grid(~kernel.type)+
-    labs(title = "Comparison between distribution of different sized grains")+
+    labs(title = "Comparison between distribution of different sized grains",
+         caption = "Batch: 01, 06, 11")+
     xlab("average grain number")+
     ylab("Spike position")+
     theme_classic()+
@@ -207,8 +211,10 @@ hypo2_stat <- function(df){
                        label.x.npc = 0.4)+
     facet_grid(~kernel.type)+
     labs(title="Comparison between spike sections in distribution of different sized grains",
-         subtitle = "Alt: The basal or apical part has less grains than the central part")+
-    #labs(title="Comparison between spike sections in distribution of different sized grains in batch 11")+
+         caption = "Batch: 01, 06, 11")+
+    # labs(title="Comparison between spike sections in distribution of different sized grains in batch 11",
+    #      subtitle = "Alt: The basal or apical part has less grains than the central part",
+    #      caption = "Batch: 11")+
     xlab("Spike Section")+
     ylab("Grain Number")+
     theme_classic()+
@@ -220,7 +226,7 @@ hypo2_stat <- function(df){
           axis.title = element_text(size=15, face = "bold"),
           axis.text = element_text(size = 15),
           axis.text.x = element_text(angle = 45, vjust = 0.5),
-          plot.title = element_text(size = 12, face = "bold",hjust = 0.5),
+          plot.title = element_text(size = 10, face = "bold",hjust = 0.5),
           plot.subtitle = element_text(hjust=0.5))
   return(p)
 }
@@ -270,7 +276,8 @@ hypo3 <- function(df){
     scale_color_viridis_b(guide = "legend",breaks = c(1, 2, 3),
                           labels = paste0("kernel.",c("S","M","L")))+
     scale_shape_manual(values = c(20,21,23))+
-    labs(title = "Distribution of different sized grains in 3 batches")+
+    labs(title = "Distribution of different sized grains in 3 batches",
+         caption = "Batch: 01, 06, 11")+
     xlab("average grain number")+
     ylab("Spike position")+
     theme_classic2()+
@@ -318,7 +325,8 @@ hypo3_stat1 <- function(df){ #comparison of grain size between batches
                        label = "p.signif")+
     facet_grid(~kernel.type)+
     labs(title = "Comparison in distribution of grain size between batches",
-         subtitle = "Alt: Spikes from batch 11 has more grains of size S/M/L than those of batch 6")+
+         subtitle = "Alt: Spikes from batch 11 has more grains of size S/M/L than those of batch 6",
+         caption = "Batch: 06, 11")+
     xlab("Batch Number")+
     ylab("Spike Number")+
     theme_classic()+
@@ -369,7 +377,8 @@ hypo3_stat2 <- function(df){ # comparison grain distribution between batches
                        label.y.npc = 0.9, label = "p.signif")+
     facet_grid(~batch)+
     labs(title = "Comparison in distribution of grains across spike sections between batches",
-         subtitle = "Alt: The basal or apical part has less grains than the central part")+
+         subtitle = "Alt: The basal or apical part has less grains than the central part",
+         caption = "Batch: 06, 11")+
     xlab("Spike Section")+
     ylab("Spike Number")+
     theme_classic()+
